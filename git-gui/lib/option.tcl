@@ -162,6 +162,7 @@ proc do_options {} {
 		{s gui.stageuntracked {mc "Staging of untracked files"} {list "yes" "no" "ask"}}
 		{b gui.displayuntracked {mc "Show untracked files"}}
 		{i-1..99 gui.tabsize {mc "Tab spacing"}}
+		{b gui.rescanonfocus {mc "Rescan on focus in"}}
 		} {
 		set type [lindex $option 0]
 		set name [lindex $option 1]

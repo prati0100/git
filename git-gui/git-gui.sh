@@ -902,6 +902,7 @@ set font_descs {
 }
 set default_config(gui.stageuntracked) ask
 set default_config(gui.displayuntracked) true
+set default_config(gui.rescanonfocus) false
 
 ######################################################################
 ##
@@ -3849,6 +3850,16 @@ if {[is_enabled transport]} {
 }
 
 bind .   <Key-F5>     ui_do_rescan
+bind .   <FocusIn>    {
+	if {[is_config_true gui.rescanonfocus]} {
+		# This script will get executed for the main window and all its
+		# children. But we want to rescan only when the main
+		# window comes into focus.
+		if {"%W" eq "."} {
+			do_rescan
+		}
+	}
+}
 bind .   <$M1B-Key-r> ui_do_rescan
 bind .   <$M1B-Key-R> ui_do_rescan
 bind .   <$M1B-Key-s> do_signoff
