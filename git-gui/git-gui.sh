@@ -3606,9 +3606,14 @@ set ctxm .vpane.lower.diff.body.ctxm
 menu $ctxm -tearoff 0
 $ctxm add command \
 	-label [mc "Apply/Reverse Hunk"] \
-	-command {apply_hunk $cursorX $cursorY}
+	-command {apply_or_revert_hunk $cursorX $cursorY 0}
 set ui_diff_applyhunk [$ctxm index last]
 lappend diff_actions [list $ctxm entryconf $ui_diff_applyhunk -state]
+$ctxm add command \
+	-label [mc "Revert Hunk"] \
+	-command {apply_or_revert_hunk $cursorX $cursorY 1}
+set ui_diff_reverthunk [$ctxm index last]
+lappend diff_actions [list $ctxm entryconf $ui_diff_reverthunk -state]
 $ctxm add command \
 	-label [mc "Apply/Reverse Line"] \
 	-command {apply_or_revert_range_or_line $cursorX $cursorY 0; do_rescan}
@@ -3715,6 +3720,8 @@ proc popup_diff_menu {ctxm ctxmmg ctxmsm x y X Y} {
 		set has_range [expr {[$::ui_diff tag nextrange sel 0.0] != {}}]
 		if {$::ui_index eq $::current_diff_side} {
 			set l [mc "Unstage Hunk From Commit"]
+			set h [mc "Revert Hunk"]
+
 			if {$has_range} {
 				set t [mc "Unstage Lines From Commit"]
 				set r [mc "Revert Lines"]
@@ -3724,6 +3731,8 @@ proc popup_diff_menu {ctxm ctxmmg ctxmsm x y X Y} {
 			}
 		} else {
 			set l [mc "Stage Hunk For Commit"]
+			set h [mc "Revert Hunk"]
+
 			if {$has_range} {
 				set t [mc "Stage Lines For Commit"]
 				set r [mc "Revert Lines"]
@@ -3758,6 +3767,9 @@ proc popup_diff_menu {ctxm ctxmmg ctxmsm x y X Y} {
 		$ctxm entryconf $::ui_diff_applyline -state $s -label $t
 		$ctxm entryconf $::ui_diff_revertline -state $revert_state \
 			-label $r
+		$ctxm entryconf $::ui_diff_reverthunk -state $revert_state \
+			-label $h
+
 		tk_popup $ctxm $X $Y
 	}
 }
