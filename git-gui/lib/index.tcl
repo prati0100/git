@@ -388,6 +388,18 @@ proc do_add_all {} {
 	add_helper [mc "Adding all changed files"] $paths
 }
 
+proc revert_dialog {query} {
+	return [tk_dialog \
+		.confirm_revert \
+		"[appname] ([reponame])" \
+		"$query" \
+		question \
+		1 \
+		[mc "Do Nothing"] \
+		[mc "Revert Changes"] \
+		]
+}
+
 proc revert_helper {txt paths} {
 	global file_states current_diff_path
 
@@ -430,17 +442,12 @@ proc revert_helper {txt paths} {
 		set query [mc "Revert changes in these %i files?" $n]
 	}
 
-	set reply [tk_dialog \
-		.confirm_revert \
-		"[appname] ([reponame])" \
-		"$query
+	set query "$query
 
-[mc "Any unstaged changes will be permanently lost by the revert."]" \
-		question \
-		1 \
-		[mc "Do Nothing"] \
-		[mc "Revert Changes"] \
-		]
+[mc "Any unstaged changes will be permanently lost by the revert."]"
+
+	set reply [revert_dialog $query]
+
 	if {$reply == 1} {
 		checkout_index \
 			$txt \
