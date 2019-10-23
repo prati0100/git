@@ -1086,6 +1086,27 @@ static void wt_longstatus_print_verbose(struct wt_status *s)
 		rev.diffopt.b_prefix = "w/";
 		run_diff_files(&rev, 0);
 	}
+
+	if (s->amend) {
+		repo_init_revisions(s->repo, &rev, NULL);
+		rev.diffopt.flags.allow_textconv = 1;
+		rev.diffopt.ita_invisible_in_index = 1;
+
+		memset(&opt, 0, sizeof(opt));
+		opt.def = "HEAD";
+		setup_revisions(0, NULL, &rev, &opt);
+
+		rev.diffopt.output_format |= DIFF_FORMAT_PATCH;
+		rev.diffopt.detect_rename = s->detect_rename >= 0 ? s->detect_rename : rev.diffopt.detect_rename;
+		rev.diffopt.rename_limit = s->rename_limit >= 0 ? s->rename_limit : rev.diffopt.rename_limit;
+		rev.diffopt.rename_score = s->rename_score >= 0 ? s->rename_score : rev.diffopt.rename_score;
+		rev.diffopt.file = s->fp;
+		rev.diffopt.close_file = 0;
+		rev.diffopt.use_color = 0;
+		status_printf_ln(s, c, "Changes to amend:\n");
+
+		run_diff_index(&rev, 1);
+	}
 }
 
 static void wt_longstatus_print_tracking(struct wt_status *s)
