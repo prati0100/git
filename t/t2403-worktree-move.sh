@@ -222,4 +222,49 @@ test_expect_success 'not remove a repo with initialized submodule' '
 	)
 '
 
+test_expect_success 'remove auto-created branch' '
+	(
+		git worktree add to-remove &&
+		git worktree remove to-remove &&
+		git branch -l to-remove >branch_list &&
+		test_line_count = 0 branch_list
+	)
+'
+
+test_expect_success 'do not remove a branch that was not auto-created' '
+	(
+		git worktree add -b new_branch to-remove &&
+		git worktree remove to-remove &&
+		git branch -l new_branch >branch_list &&
+		test_line_count = 1 branch_list &&
+		git branch -d new_branch &&
+		git branch foo &&
+		git worktree add to-remove foo &&
+		git worktree remove to-remove &&
+		git branch -l foo >branch_list &&
+		test_line_count = 1 branch_list &&
+		git branch -d foo &&
+		git branch to-remove &&
+		git worktree add to-remove &&
+		git worktree remove to-remove &&
+		git branch -l to-remove >branch_list &&
+		test_line_count = 1 branch_list &&
+		git branch -d to-remove
+	)
+'
+
+test_expect_success 'do not remove auto-created branch that was moved' '
+	(
+		git worktree add to-remove &&
+		cd to-remove &&
+		test_commit foo &&
+		cd ../ &&
+		git worktree remove to-remove &&
+		git branch -l to-remove >branch_list &&
+		test_line_count = 1 branch_list &&
+		git branch -D to-remove
+	)
+'
+
+
 test_done

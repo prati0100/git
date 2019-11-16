@@ -35,6 +35,7 @@ struct add_opts {
 static int show_only;
 static int verbose;
 static int guess_remote;
+static int auto_create;
 static timestamp_t expire;
 
 static int git_worktree_config(const char *var, const char *value, void *cb)
@@ -270,11 +271,13 @@ static int add_worktree(const char *path, const char *refname,
 	struct child_process cp = CHILD_PROCESS_INIT;
 	struct argv_array child_env = ARGV_ARRAY_INIT;
 	unsigned int counter = 0;
-	int len, ret;
+	int len, ret, fd;
 	struct strbuf symref = STRBUF_INIT;
 	struct commit *commit = NULL;
 	int is_branch = 0;
 	struct strbuf sb_name = STRBUF_INIT;
+	struct object_id oid;
+	char *hex;
 
 	validate_worktree_add(path, opts);
 
@@ -353,6 +356,18 @@ static int add_worktree(const char *path, const char *refname,
 	strbuf_reset(&sb);
 	strbuf_addf(&sb, "%s/commondir", sb_repo.buf);
 	write_file(sb.buf, "../..");
+	strbuf_reset(&sb);
+	strbuf_addf(&sb, "%s/auto_created", sb_repo.buf);
+	/* Mark this branch as an "auto-created" one. */
+	if (auto_create) {
+		fd = xopen(sb.buf, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+		get_oid("HEAD", &oid);
+		hex = oid_to_hex(&oid);
+		write_file_buf(sb.buf, hex, strlen(hex));
+
+		if (close(fd))
+			die(_("could not close '%s'"), sb.buf);
+	}
 
 	argv_array_pushf(&child_env, "%s=%s", GIT_DIR_ENVIRONMENT, sb_git.buf);
 	argv_array_pushf(&child_env, "%s=%s", GIT_WORK_TREE_ENVIRONMENT, path);
@@ -576,6 +591,8 @@ static int add(int ac, const char **av, const char *prefix)
 		if (run_command(&cp))
 			return -1;
 		branch = new_branch;
+
+		auto_create = 1;
 	} else if (opt_track) {
 		die(_("--[no-]track can only be used if a new branch is created"));
 	}
@@ -912,9 +929,10 @@ static int remove_worktree(int ac, const char **av, const char *prefix)
 		OPT_END()
 	};
 	struct worktree **worktrees, *wt;
-	struct strbuf errmsg = STRBUF_INIT;
+	struct strbuf errmsg = STRBUF_INIT, sb = STRBUF_INIT, hex = STRBUF_INIT;
 	const char *reason = NULL;
-	int ret = 0;
+	int ret = 0, delete_auto_created = 0;
+	struct object_id oid;
 
 	ac = parse_options(ac, av, prefix, options, worktree_usage, 0);
 	if (ac != 1)
@@ -939,6 +957,23 @@ static int remove_worktree(int ac, const char **av, const char *prefix)
 		    errmsg.buf);
 	strbuf_release(&errmsg);
 
+	/*
+	 * Check if we auto-created a branch for this worktree and it hasn't
+	 * moved since. Do it before the contents of the worktree get wiped.
+	 * Delete the branch later because it is checked out right now.
+	 */
+	git_path_buf(&sb, "worktrees/%s/auto_created", wt->id);
+	if (file_exists(sb.buf)) {
+		strbuf_read_file(&hex, sb.buf, 0);
+		get_oid(wt->id, &oid);
+
+		if (strcmp(hex.buf, oid_to_hex(&oid)) == 0)
+			delete_auto_created = 1;
+	}
+
+	strbuf_release(&sb);
+	strbuf_release(&hex);
+
 	if (file_exists(wt->path)) {
 		if (!force)
 			check_clean_worktree(wt, av[0]);
@@ -951,6 +986,17 @@ static int remove_worktree(int ac, const char **av, const char *prefix)
 	 */
 	ret |= delete_git_dir(wt->id);
 	delete_worktrees_dir_if_empty();
+
+	if (delete_auto_created) {
+		struct child_process cp = CHILD_PROCESS_INIT;
+		cp.git_cmd = 1;
+
+		argv_array_push(&cp.args, "branch");
+		argv_array_push(&cp.args, "-d");
+		argv_array_push(&cp.args, wt->id);
+
+		ret |= run_command(&cp);
+	}
 
 	free_worktrees(worktrees);
 	return ret;

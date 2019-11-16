@@ -73,8 +73,9 @@ If `<commit-ish>` is omitted and neither `-b` nor `-B` nor `--detach` used,
 then, as a convenience, the new worktree is associated with a branch
 (call it `<branch>`) named after `$(basename <path>)`.  If `<branch>`
 doesn't exist, a new branch based on HEAD is automatically created as
-if `-b <branch>` was given.  If `<branch>` does exist, it will be
-checked out in the new worktree, if it's not checked out anywhere
+if `-b <branch>` was given.  In this case, if `<branch>` is not moved, it is
+automatically deleted when the worktree is removed.  If `<branch>` does exist,
+it will be checked out in the new worktree, if it's not checked out anywhere
 else, otherwise the command will refuse to create the worktree (unless
 `--force` is used).
 
@@ -108,6 +109,10 @@ Remove a working tree. Only clean working trees (no untracked files
 and no modification in tracked files) can be removed. Unclean working
 trees or ones with submodules can be removed with `--force`. The main
 working tree cannot be removed.
++
+Removing a working tree might lead to its associated branch being deleted if
+it was auto-created and has not moved since. See `add` for more information on
+when exactly this can happen.
 
 unlock::
 
